@@ -1,5 +1,6 @@
 import { site } from "@/content/portfolio";
 
+/** Site footer — GRID/SFX stay keyboard-only ([G]) / localStorage; no footer chrome. */
 export function Footer() {
   return (
     <footer className="section-pad border-t border-ink/15 bg-paper py-8 text-ink">

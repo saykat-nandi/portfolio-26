@@ -2,6 +2,10 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useState, type ReactNode } from "react";
+import {
+  SECTION_FADE_DURATION,
+  SECTION_FADE_EASE,
+} from "@/lib/motionTokens";
 
 type FadeInProps = {
   children: ReactNode;
@@ -31,9 +35,9 @@ export function FadeIn({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once, margin: "-8% 0px" }}
       transition={{
-        duration: reduce ? 0 : 0.28,
+        duration: reduce ? 0 : SECTION_FADE_DURATION,
         delay: reduce ? 0 : delay,
-        ease: [0.22, 1, 0.36, 1],
+        ease: SECTION_FADE_EASE,
       }}
     >
       {children}

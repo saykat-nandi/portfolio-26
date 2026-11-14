@@ -10,7 +10,7 @@ type ScrollOptions = {
 
 /**
  * Writes --progress (0–1) on the element inside rAF — zero React re-renders.
- * Accepts `"sticky" | "exit" | "pass-through"` or `{ mode }` for older call sites.
+ * Skips work when the element is fully off-screen.
  */
 export function useScrollProgress(
   ref: RefObject<HTMLElement | null>,
@@ -31,19 +31,31 @@ export function useScrollProgress(
 
     if (prefersReduced) {
       el.style.setProperty("--progress", mode === "exit" ? "0" : "1");
+      if (mode === "exit") el.removeAttribute("data-exit-covered");
       return;
     }
 
     let rafId = 0;
+    let lastWritten = -1;
+    const margin = 120;
 
     const update = () => {
       const rect = el.getBoundingClientRect();
       const vh = window.innerHeight;
+
+      // Early-out when fully outside viewport (± margin)
+      if (rect.bottom < -margin || rect.top > vh + margin) {
+        if (mode === "exit" && lastWritten !== 0) {
+          el.style.setProperty("--progress", "0");
+          el.removeAttribute("data-exit-covered");
+          lastWritten = 0;
+        }
+        return;
+      }
+
       let raw = 0;
 
       if (mode === "exit") {
-        // 0 at rest; 1 after one stage-height of scroll.
-        // Sticky-aware: when top is pinned ~0, drive from window.scrollY.
         const pinned =
           getComputedStyle(el).position === "sticky" &&
           rect.top >= -1 &&
@@ -56,16 +68,23 @@ export function useScrollProgress(
           raw = rect.height > 0 ? -rect.top / rect.height : 0;
         }
       } else if (mode === "sticky") {
-        // 0 when sticky wrapper hits viewport top, 1 when scrollable track finishes
         const scrollable = rect.height - vh;
         raw = scrollable > 0 ? -rect.top / scrollable : 0;
       } else {
-        // pass-through: entering bottom → leaving top
         raw = (vh - rect.top) / (vh + rect.height);
       }
 
       const clamped = Math.min(1, Math.max(0, raw));
-      el.style.setProperty("--progress", clamped.toFixed(4));
+      const rounded = Number(clamped.toFixed(4));
+      if (rounded !== lastWritten) {
+        el.style.setProperty("--progress", rounded.toFixed(4));
+        lastWritten = rounded;
+      }
+
+      if (mode === "exit") {
+        if (clamped >= 0.98) el.setAttribute("data-exit-covered", "");
+        else el.removeAttribute("data-exit-covered");
+      }
     };
 
     const onScroll = () => {

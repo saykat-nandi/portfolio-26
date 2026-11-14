@@ -11,6 +11,12 @@ export type CaseStudy = {
   videoUrl?: string;
   diagramLabel: string;
   codeSnippet: string;
+  /** Compact 3-column strip above execution bullets */
+  specs: {
+    domain: string;
+    mechanic: string;
+    scale: string;
+  };
 };
 
 export type TechGroup = {
@@ -23,6 +29,8 @@ export type ExperienceItem = {
   role: string;
   period: string;
   location: string;
+  /** Short domain tag under company (NDA-safe) */
+  domain?: string;
   bullets: string[];
 };
 
@@ -73,7 +81,7 @@ export const hero = {
   badge: "True Growth",
   brandPlate: "SAYKAT",
   photo: {
-    src: "/saykat.png",
+    src: "/saykat-bw.png",
     alt: "Saykat Nandi Dip",
   },
   partners: ["Node", "PHP", "React", "MySQL", "Pusher", "Git"],
@@ -105,8 +113,8 @@ export const about = {
   title: "Engineering with business logic in mind",
   paragraphs: [
     "I am a Full-Stack Software Engineer with production experience shipping custom web applications and backend architectures for an international technology team in Cyprus.",
-    "My work sits at the intersection of complex business logic and interactive user interfaces—from building real-time esports tournament engines and escrow payment flows to designing ad-control panels with anti-bot metric verification and headless Node.js automation tools. Alongside engineering, my background in Business Administration shapes how I build: I care about monetization mechanics, user retention, and shipping software that solves measurable operational problems rather than writing code for its own sake.",
-    "Outside of web architecture, I spend my time building custom embedded hardware and audio systems—working with Arduino microcontrollers, optical encoders, and acoustic enclosures.",
+    "My work sits at the intersection of complex business logic and interactive user interfaces—from real-time esports tournament engines and escrow payment flows to ad-control panels with anti-bot verification and headless Node.js automation.",
+    "Outside of web architecture, I build custom embedded hardware and audio systems—Arduino microcontrollers, optical encoders, and acoustic enclosures—while a Bachelor of Business Administration background keeps features tied to retention and monetization.",
   ],
 };
 
@@ -133,7 +141,12 @@ export const caseStudies: CaseStudy[] = [
     liveUrl: "",
     sourceUrl: "",
     videoUrl: "",
-    diagramLabel: "Ad verify → bill → overlay",
+    diagramLabel: "Anti-bot traffic filtering · Real-time broadcast sync",
+    specs: {
+      domain: "Ad-Tech / Live Stream",
+      mechanic: "Anti-bot verify + bill",
+      scale: "Live broadcast overlays",
+    },
     codeSnippet: `if (!botGuard.isHuman(event)) return reject();
 metrics.recordGenuine(event);
 billing.charge(campaignId, event.cost);`,
@@ -160,7 +173,12 @@ billing.charge(campaignId, event.cost);`,
     liveUrl: "",
     sourceUrl: "",
     videoUrl: "",
-    diagramLabel: "Lobby → escrow → bracket → payout",
+    diagramLabel: "WebSocket state sync · Escrow wallet & KYC",
+    specs: {
+      domain: "Tournament Ops",
+      mechanic: "WS lobby + coin escrow",
+      scale: "1v1 bracket payouts",
+    },
     codeSnippet: `await wallet.lock(entryFee, matchId);
 await bracket.seed(players);
 pusher.trigger(room, "match:live", state);`,
@@ -185,7 +203,12 @@ pusher.trigger(room, "match:live", state);`,
     liveUrl: "",
     sourceUrl: "",
     videoUrl: "",
-    diagramLabel: "Generate → render → package → ship",
+    diagramLabel: "60+ digital bundles · Headless Puppeteer QA",
+    specs: {
+      domain: "Automation / Commerce",
+      mechanic: "Headless Puppeteer QA",
+      scale: "60+ bundles / run",
+    },
     codeSnippet: `for (const form of catalog) {
   const html = await render(form);
   await packageBundle(html, form.sku);
@@ -199,7 +222,6 @@ pusher.trigger(room, "match:live", state);`,
     stack: [
       "PHP",
       "JavaScript",
-      "Alpine.js",
       "Tailwind CSS",
       "Custom Relational Schema",
     ],
@@ -212,6 +234,11 @@ pusher.trigger(room, "match:live", state);`,
     sourceUrl: "",
     videoUrl: "",
     diagramLabel: "User ⇄ Page graphs + permissions",
+    specs: {
+      domain: "Social Graph",
+      mechanic: "User ⇄ Page entities",
+      scale: "Nested permissions",
+    },
     codeSnippet: `pages.hasMany(posts);
 pages.belongsToMany(followers);
 acl.authorize(actor, page, action);`,
@@ -227,7 +254,7 @@ export const techStack: TechGroup[] = [
       "React",
       "Next.js",
       "Tailwind CSS",
-      "Alpine.js",
+      "Framer Motion",
       "HTML5",
       "CSS3",
     ],
@@ -268,10 +295,11 @@ export const experience: ExperienceItem[] = [
     role: "Full-Stack Software Engineer",
     period: "2023 — Present",
     location: "Cyprus (Remote)",
+    domain: "B2B Ad-Tech & Live Gaming Infrastructure",
     bullets: [
-      "Architected and shipped production web platforms spanning ad-tech monetization, real-time multiplayer state, and escrow-backed competitive flows.",
-      "Owned end-to-end delivery of backend services, relational schemas, and operator dashboards used by creators, moderators, and advertisers.",
-      "Collaborated asynchronously with remote project managers and designers across time zones, translating messy product requirements into reliable release cycles.",
+      "Architected production platforms for ad-tech monetization, WebSocket match lobbies, and escrow-backed competitive flows under real tournament traffic.",
+      "Shipped anti-bot verification and live-stream overlay sync that kept billing tied to human traffic and sub-second broadcast triggers.",
+      "Owned async delivery with remote PMs/designers—relational schemas, operator dashboards, and release cycles that held under concurrent lobby load.",
     ],
   },
   {
@@ -279,9 +307,10 @@ export const experience: ExperienceItem[] = [
     role: "Systems & Automation Developer",
     period: "Ongoing",
     location: "Remote",
+    domain: "Headless Commerce Automation",
     bullets: [
-      "Built headless Node.js automation pipelines that cut repetitive digital-product packaging from hours of manual QA to a single script run.",
-      "Designed custom data models and permission layers for multi-entity social architectures beyond standard user-only schemas.",
+      "Built Puppeteer pipelines that package 60+ digital form bundles per run, cutting hours of manual QA to a single script execution.",
+      "Designed multi-entity social schemas and permission layers beyond standard user-only architectures.",
     ],
   },
 ];
@@ -330,8 +359,9 @@ export const contact = {
   eyebrow: "Contact",
   title: "Let's build something reliable",
   availability: "Open to full-time roles, contract work, and select freelance builds",
-  email: "hello@saykat.dev",
-  note: "Prefer email? One click copies the address. Or send a short note below.",
+  email: "nandisaykat@gmail.com",
+  phone: "+8801616065207",
+  note: "Prefer email or phone? One click copies the address. Or transmit a short note — it dispatches in-place.",
   form: {
     nameLabel: "Name",
     emailLabel: "Email",

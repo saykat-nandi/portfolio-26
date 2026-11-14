@@ -2,6 +2,10 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useState, type ReactNode } from "react";
+import {
+  SECTION_FADE_DURATION,
+  SECTION_FADE_EASE,
+} from "@/lib/motionTokens";
 
 function useSafeReducedMotion() {
   const prefersReduce = useReducedMotion();
@@ -62,7 +66,10 @@ export function StaggerItem({
         hidden: reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 },
         show: { opacity: 1, y: 0 },
       }}
-      transition={{ duration: reduce ? 0 : 0.25, ease: [0.22, 1, 0.36, 1] }}
+      transition={{
+        duration: reduce ? 0 : SECTION_FADE_DURATION,
+        ease: SECTION_FADE_EASE,
+      }}
     >
       {children}
     </motion.div>

@@ -7,6 +7,8 @@ import {
 } from "react";
 import { techStack } from "@/content/portfolio";
 import { useScrollProgress } from "@/hooks/useScrollProgress";
+import { polish } from "@/lib/polish";
+import { playTick } from "@/lib/relayClick";
 
 const TICKER = techStack.flatMap((g) => g.items);
 
@@ -30,8 +32,13 @@ export default function ScrollTechStack() {
     let lastY = window.scrollY;
     let velocity = 0;
     let offset = 0;
+    let visible = false;
 
     const tick = () => {
+      if (!visible) {
+        raf = 0;
+        return;
+      }
       const y = window.scrollY;
       const dy = y - lastY;
       lastY = y;
@@ -43,67 +50,108 @@ export default function ScrollTechStack() {
       raf = requestAnimationFrame(tick);
     };
 
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        visible = entry.isIntersecting;
+        if (visible && !raf) {
+          lastY = window.scrollY;
+          raf = requestAnimationFrame(tick);
+        }
+      },
+      { rootMargin: "80px 0px" }
+    );
+    io.observe(section);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      io.disconnect();
+    };
   }, []);
 
   useEffect(() => {
     const root = cardsRef.current;
     if (!root) return;
-    const cards = [...root.querySelectorAll<HTMLElement>("[data-unmask]")];
+    const cols = [...root.querySelectorAll<HTMLElement>("[data-unmask]")];
     const prefersReduced = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches;
+    const din = polish("techDinRail");
 
     if (prefersReduced) {
-      cards.forEach((c) => {
+      cols.forEach((c) => {
+        c.classList.add("is-snapped");
         c.style.opacity = "1";
         c.style.transform = "none";
       });
       return;
     }
 
-    cards.forEach((c) => {
-      c.style.opacity = "0";
-      c.style.transform = "translateY(28px)";
-    });
+    if (!din) {
+      cols.forEach((c) => {
+        c.style.opacity = "0";
+        c.style.transform = "translateY(28px)";
+      });
+
+      const io = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            const el = entry.target as HTMLElement;
+            const i = Number(el.dataset.unmask || 0);
+            el.animate(
+              [
+                { opacity: 0, transform: "translateY(28px)" },
+                { opacity: 1, transform: "translateY(0)" },
+              ],
+              {
+                duration: 520,
+                delay: i * 60,
+                fill: "forwards",
+                easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+              }
+            );
+            io.unobserve(el);
+          });
+        },
+        { threshold: 0.2 }
+      );
+
+      cols.forEach((c) => io.observe(c));
+      return () => io.disconnect();
+    }
 
     const io = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (!entry.isIntersecting) return;
-          const el = entry.target as HTMLElement;
-          const i = Number(el.dataset.unmask || 0);
-          el.animate(
-            [
-              { opacity: 0, transform: "translateY(28px)" },
-              { opacity: 1, transform: "translateY(0)" },
-            ],
-            {
-              duration: 520,
-              delay: i * 60,
-              fill: "forwards",
-              easing: "cubic-bezier(0.16, 1, 0.3, 1)",
-            }
-          );
-          io.unobserve(el);
+          const col = entry.target as HTMLElement;
+          col.classList.add("is-snapped");
+          playTick();
+          const rows = [
+            ...col.querySelectorAll<HTMLElement>(".tech-din-row"),
+          ];
+          rows.forEach((row, i) => {
+            row.style.transitionDelay = `${120 + i * 30}ms`;
+          });
+          io.unobserve(col);
         });
       },
-      { threshold: 0.2 }
+      { threshold: 0.25 }
     );
 
-    cards.forEach((c) => io.observe(c));
+    cols.forEach((c) => io.observe(c));
     return () => io.disconnect();
   }, []);
 
   const loop = [...TICKER, ...TICKER];
+  const din = polish("techDinRail");
 
   return (
     <section
-      id="stack"
+      id="toolkit"
       ref={sectionRef}
       style={{ "--progress": 0 } as CSSProperties}
-      className="surface-obsidian relative overflow-hidden border-t border-white/10 py-20 md:py-28"
+      className="surface-obsidian relative overflow-hidden border-t border-white/10 section-pad-y"
     >
       <div className="mb-12 border-y border-white/10 bg-black/30 py-3">
         <div className="overflow-hidden">
@@ -125,7 +173,7 @@ export default function ScrollTechStack() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-10">
+      <div className="page-rail">
         <p className="font-[family-name:var(--font-archivo)] text-xs uppercase tracking-[0.2em] text-[var(--muted-on-ink)]">
           <span className="mr-1.5 inline-block text-signal">●</span>
           (03 / TECH STACK)
@@ -142,8 +190,11 @@ export default function ScrollTechStack() {
             <div
               key={group.title}
               data-unmask={index}
-              className="border border-white/12 bg-[#1a1a1c] p-6"
+              className={`border border-white/12 bg-elevated p-6${
+                din ? " tech-din-col pl-7" : ""
+              }`}
             >
+              {din ? <span className="tech-din-rail" aria-hidden /> : null}
               <h3 className="font-[family-name:var(--font-archivo)] text-lg font-semibold tracking-[-0.02em]">
                 {group.title}
               </h3>
@@ -151,9 +202,15 @@ export default function ScrollTechStack() {
                 {group.items.map((item) => (
                   <li
                     key={item}
-                    className="flex items-start gap-3 text-sm text-[var(--muted-on-ink)]"
+                    className={`flex items-start gap-3 text-sm text-[var(--muted-on-ink)]${
+                      din ? " tech-din-row" : ""
+                    }`}
                   >
-                    <span className="mt-2 h-px w-3 shrink-0 bg-signal" />
+                    <span
+                      className={`mt-2 h-px w-3 shrink-0 bg-signal${
+                        din && polish("techBladeBoot") ? " tech-blade-led" : ""
+                      }`}
+                    />
                     <span>{item}</span>
                   </li>
                 ))}

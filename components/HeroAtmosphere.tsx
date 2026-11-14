@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type RefObject } from "react";
+import { polish } from "@/lib/polish";
 
 interface HeroAtmosphereProps {
   containerRef: RefObject<HTMLElement | null>;
@@ -11,8 +12,8 @@ interface HeroAtmosphereProps {
   reducedMotion?: boolean;
 }
 
-/** Layer 1: concrete noise + key-light + BUILT TO / SCALE watermark.
- *  Owns the shared pointer → CSS/--transform rAF loop (no React re-renders). */
+/** Layer 1: tiled static noise + transform spotlight + watermark.
+ *  Flat translate parallax only — idles when settled / hero covered. */
 export default function HeroAtmosphere({
   containerRef,
   portraitRef,
@@ -22,14 +23,17 @@ export default function HeroAtmosphere({
   reducedMotion = false,
 }: HeroAtmosphereProps) {
   const watermarkRef = useRef<HTMLDivElement>(null);
+  const spotRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const container = containerRef.current;
+    const spot = spotRef.current;
     if (!container) return;
 
     if (reducedMotion) {
-      container.style.setProperty("--mx", "50%");
-      container.style.setProperty("--my", "45%");
+      if (spot) {
+        spot.style.transform = "translate3d(50%, 45%, 0) translate(-50%, -50%)";
+      }
       return;
     }
 
@@ -38,75 +42,98 @@ export default function HeroAtmosphere({
     let currentX = targetX;
     let currentY = targetY;
     let rafId = 0;
+    let running = false;
+    let paused = false;
 
-    const onPointerMove = (e: PointerEvent) => {
+    const syncPaused = () => {
+      const exitEl = container.closest("[data-hero-exit]");
+      const covered = !!exitEl?.hasAttribute("data-exit-covered");
       const rect = container.getBoundingClientRect();
-      targetX = e.clientX - rect.left;
-      targetY = e.clientY - rect.top;
+      const offscreen =
+        rect.bottom < 0 || rect.top > window.innerHeight;
+      paused = covered || offscreen;
+      if (paused && running) {
+        running = false;
+        cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
     };
 
-    const tick = () => {
-      currentX += (targetX - currentX) * 0.09;
-      currentY += (targetY - currentY) * 0.09;
+    const apply = (normX: number, normY: number) => {
+      const edgeX = 1 - Math.pow(Math.min(1, Math.abs(normX) * 2), 1.35);
+      const edgeY = 1 - Math.pow(Math.min(1, Math.abs(normY) * 2), 1.35);
+      const edge = Math.max(0.28, edgeX * edgeY);
+      const x = normX * edge;
+      const y = normY * edge;
 
-      const width = container.clientWidth || 1440;
-      const height = container.clientHeight || 900;
-      const normX = currentX / width - 0.5;
-      const normY = currentY / height - 0.5;
-
-      container.style.setProperty("--mx", `${currentX.toFixed(1)}px`);
-      container.style.setProperty("--my", `${currentY.toFixed(1)}px`);
-      container.style.setProperty("--nx", normX.toFixed(4));
-      container.style.setProperty("--ny", normY.toFixed(4));
-
+      if (spot) {
+        spot.style.transform = `translate3d(${currentX.toFixed(1)}px, ${currentY.toFixed(1)}px, 0) translate(-50%, -50%)`;
+      }
       if (watermarkRef.current) {
-        watermarkRef.current.style.transform = `translate3d(${(normX * -28).toFixed(1)}px, ${(normY * -14).toFixed(1)}px, -70px)`;
+        watermarkRef.current.style.transform = `translate3d(${(x * -18).toFixed(1)}px, ${(y * -8).toFixed(1)}px, 0)`;
       }
-
       if (portraitRef.current) {
-        // Opposite parallax ±12px
-        portraitRef.current.style.transform = `translate3d(${(normX * -12).toFixed(1)}px, ${(normY * -8).toFixed(1)}px, 0)`;
+        portraitRef.current.style.transform = `translate3d(${(x * -6).toFixed(1)}px, ${(y * -4).toFixed(1)}px, 0)`;
       }
-
       if (plateRef.current) {
-        const rotY = normX * 12;
-        const rotX = normY * -9;
-        plateRef.current.style.transform = `translate3d(0,0,35px) rotateX(${rotX.toFixed(2)}deg) rotateY(${rotY.toFixed(2)}deg)`;
+        plateRef.current.style.transform = `translate3d(${(x * 4).toFixed(1)}px, ${(y * 3).toFixed(1)}px, 0)`;
         plateRef.current.style.setProperty(
           "--glare",
           `${((normX + 0.5) * 100).toFixed(1)}%`
         );
       }
-
       if (shippedRef?.current) {
-        const rotY = normX * 6;
-        const rotX = normY * -4;
-        shippedRef.current.style.transform = `translate3d(${(normX * 10).toFixed(1)}px, ${(normY * 6).toFixed(1)}px, 35px) rotateX(${rotX.toFixed(2)}deg) rotateY(${rotY.toFixed(2)}deg)`;
+        shippedRef.current.style.transform = `translate3d(${(x * 5).toFixed(1)}px, ${(y * 3).toFixed(1)}px, 0)`;
+      }
+    };
+
+    const tick = () => {
+      if (paused) {
+        running = false;
+        rafId = 0;
+        return;
       }
 
-      if (titleRef?.current) {
-        // Local proximity only — expand when the cursor sweeps the headline zone
-        const titleBox = titleRef.current.getBoundingClientRect();
-        const containerBox = container.getBoundingClientRect();
-        const titleCx =
-          titleBox.left + titleBox.width * 0.5 - containerBox.left;
-        const titleCy =
-          titleBox.top + titleBox.height * 0.5 - containerBox.top;
-        const distPx = Math.hypot(currentX - titleCx, currentY - titleCy);
-        const proximity = Math.max(0, 1 - distPx / 280);
-        const wdth = 103 + proximity * 5; // 103 → 108
-        titleRef.current.style.fontVariationSettings = `"wdth" ${wdth.toFixed(1)}`;
-      }
+      currentX += (targetX - currentX) * 0.09;
+      currentY += (targetY - currentY) * 0.09;
 
+      const width = container.clientWidth || 1440;
+      const height = container.clientHeight || 900;
+      apply(currentX / width - 0.5, currentY / height - 0.5);
+
+      const settled =
+        Math.abs(targetX - currentX) < 0.35 &&
+        Math.abs(targetY - currentY) < 0.35;
+      if (settled) {
+        running = false;
+        rafId = 0;
+        return;
+      }
       rafId = requestAnimationFrame(tick);
     };
 
+    const kick = () => {
+      if (running || paused) return;
+      running = true;
+      rafId = requestAnimationFrame(tick);
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (paused) return;
+      const rect = container.getBoundingClientRect();
+      targetX = e.clientX - rect.left;
+      targetY = e.clientY - rect.top;
+      kick();
+    };
+
     container.addEventListener("pointermove", onPointerMove, { passive: true });
-    rafId = requestAnimationFrame(tick);
+    window.addEventListener("scroll", syncPaused, { passive: true });
+    syncPaused();
 
     return () => {
       cancelAnimationFrame(rafId);
       container.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("scroll", syncPaused);
     };
   }, [
     containerRef,
@@ -120,78 +147,49 @@ export default function HeroAtmosphere({
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute inset-0 z-0 overflow-hidden select-none [perspective:1200px] [transform-style:preserve-3d]"
+      className="pointer-events-none absolute inset-0 z-0 overflow-hidden select-none"
     >
-      {/* Concrete fractal noise — architectural matte, not flat grey */}
-      <svg
-        className="absolute inset-0 h-full w-full opacity-[0.035]"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <filter id="hero-concrete-noise">
-          <feTurbulence
-            type="fractalNoise"
-            baseFrequency="0.85"
-            numOctaves="4"
-            stitchTiles="stitch"
-          />
-        </filter>
-        <rect width="100%" height="100%" filter="url(#hero-concrete-noise)" />
-      </svg>
+      <div className="hero-concrete-noise absolute inset-0 opacity-[0.045]" />
 
-      {/* Layer 1 — deep background: softbox key-light */}
+      {/* Spotlight blob — transform only; sized down on small screens */}
       <div
-        className="absolute inset-0"
+        ref={spotRef}
+        className="absolute left-0 top-0 h-[280px] w-[280px] rounded-full sm:h-[420px] sm:w-[420px] lg:h-[540px] lg:w-[540px]"
         style={{
-          transform: "translateZ(-70px)",
           background:
-            "radial-gradient(540px circle at var(--mx, 50%) var(--my, 45%), rgba(255, 255, 255, 0.58) 0%, rgba(255, 255, 255, 0) 72%)",
+            "radial-gradient(circle, rgba(255,255,255,0.58) 0%, rgba(255,255,255,0) 72%)",
+          transform: "translate3d(50%, 45%, 0) translate(-50%, -50%)",
         }}
       />
 
-      {/* Layer 1 — monumental watermark, shoulder-framed mask */}
       <div
-        className="absolute inset-x-0 top-[24%] flex justify-center"
+        className={`pointer-events-none absolute inset-x-0 flex justify-center ${
+          polish("watermarkSofter") ? "top-[18%]" : "top-[24%]"
+        }`}
         style={{
           WebkitMaskImage:
-            "linear-gradient(to right, transparent 26%, black 38%, black 62%, transparent 74%)",
+            "linear-gradient(to right, transparent 34%, black 46%, black 54%, transparent 66%)",
           maskImage:
-            "linear-gradient(to right, transparent 26%, black 38%, black 62%, transparent 74%)",
+            "linear-gradient(to right, transparent 34%, black 46%, black 54%, transparent 66%)",
         }}
       >
         <div
           ref={watermarkRef}
-          className="relative text-center font-black uppercase leading-[0.86] tracking-[-0.05em] will-change-transform"
+          className="relative text-center font-black uppercase leading-[0.86] tracking-[-0.05em]"
           style={{
             fontFamily: "var(--font-archivo), sans-serif",
-            fontSize: "clamp(4.2rem, 8.6vw, 7.8rem)",
+            fontSize: "clamp(3.2rem, 6.5vw, 5.8rem)",
             fontVariationSettings: '"wdth" 112',
-            transform: "translateZ(-70px)",
+            color: "transparent",
+            WebkitTextStroke: polish("watermarkSofter")
+              ? "1px rgba(17, 17, 17, 0.26)"
+              : "1px rgba(17, 17, 17, 0.18)",
           }}
+          aria-hidden
         >
-          <div
-            style={{
-              color: "transparent",
-              WebkitTextStroke: "1px rgba(17, 17, 17, 0.14)",
-            }}
-          >
-            BUILT TO
-            <br />
-            SCALE
-          </div>
-          <div
-            className="absolute inset-0"
-            style={{
-              color: "rgba(17, 17, 17, 0.12)",
-              WebkitMaskImage:
-                "radial-gradient(200px circle at var(--mx, 50%) var(--my, 45%), black 0%, transparent 100%)",
-              maskImage:
-                "radial-gradient(200px circle at var(--mx, 50%) var(--my, 45%), black 0%, transparent 100%)",
-            }}
-          >
-            BUILT TO
-            <br />
-            SCALE
-          </div>
+          BUILT TO
+          <br />
+          SCALE
         </div>
       </div>
     </div>
