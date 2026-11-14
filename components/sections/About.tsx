@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { about } from "@/content/portfolio";
 import { FadeIn } from "@/components/motion/FadeIn";
+import { useArriveReplay } from "@/hooks/useArriveReplay";
 import { polish } from "@/lib/polish";
 
 export function About() {
@@ -10,6 +11,20 @@ export function About() {
   const [printed, setPrinted] = useState(false);
   const usePlate = polish("aboutPrintPlate");
   const useWipe = polish("aboutCaliperWipe");
+
+  const replayPrint = () => {
+    if (!usePlate && !useWipe) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setPrinted(true);
+      return;
+    }
+    setPrinted(false);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setPrinted(true));
+    });
+  };
+
+  useArriveReplay("#about", replayPrint);
 
   useEffect(() => {
     if (!usePlate && !useWipe) return;

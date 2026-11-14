@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { contact } from "@/content/portfolio";
 import { Stagger, StaggerItem } from "@/components/motion/Stagger";
+import { useArriveReplay } from "@/hooks/useArriveReplay";
 import { polish } from "@/lib/polish";
 import { playLatch, playTick } from "@/lib/relayClick";
 
@@ -17,6 +18,20 @@ export function Contact() {
   const firstInputRef = useRef<HTMLInputElement>(null);
   const useShutter = polish("contactShutter");
   const openedRef = useRef(false);
+
+  useArriveReplay("#contact", () => {
+    if (!useShutter) {
+      setOpen(true);
+      return;
+    }
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setOpen(true);
+      return;
+    }
+    openedRef.current = false;
+    setOpen(false);
+    requestAnimationFrame(() => setOpen(true));
+  });
 
   useEffect(() => {
     if (!useShutter) {

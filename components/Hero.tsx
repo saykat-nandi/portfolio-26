@@ -9,6 +9,7 @@ import {
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { useScrollProgress } from "@/hooks/useScrollProgress";
 import HeroAtmosphere from "@/components/HeroAtmosphere";
@@ -232,8 +233,13 @@ function magneticReset(el: HTMLElement | null) {
 
 export default function Hero() {
   const reduce = usePrefersReducedMotion();
-  const { entranceDelayMs } = useBootReveal();
+  const { entranceDelayMs, bootComplete } = useBootReveal();
+  const [portalReady, setPortalReady] = useState(false);
   const rootRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
   useScrollProgress(rootRef, { mode: "pass-through" });
 
   const sliderRef = useRef<HTMLSpanElement>(null);
@@ -281,10 +287,11 @@ export default function Hero() {
         playLatch();
       }
     };
+    const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
     return () => {
-      document.body.style.overflow = "";
+      document.body.style.overflow = prev;
       window.removeEventListener("keydown", onKey);
     };
   }, [drawerOpen]);
@@ -904,93 +911,102 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Architecture drawer — overflow-hidden so closed slide doesn't widen the page */}
-      <div
-        className={`fixed inset-0 z-50 overflow-hidden transition ${
-          drawerOpen
-            ? "pointer-events-auto"
-            : "pointer-events-none invisible"
-        }`}
-        aria-hidden={!drawerOpen}
-      >
-        <button
-          type="button"
-          className={`absolute inset-0 bg-black/45 transition-opacity ${
-            drawerOpen ? "opacity-100" : "opacity-0"
+      {/*
+        Architecture drawer is portaled to <body> AFTER boot.
+        HeroExitStage keeps a CSS transform, which would otherwise trap
+        position:fixed and flash a Windows scrollbar over the hero on load.
+      */}
+      {portalReady &&
+      bootComplete &&
+      createPortal(
+        <div
+          className={`fixed inset-0 z-50 overflow-hidden transition ${
+            drawerOpen
+              ? "pointer-events-auto"
+              : "pointer-events-none invisible"
           }`}
-          aria-label="Close architecture drawer"
-          onClick={() => {
-            setDrawerOpen(false);
-            playLatch();
-          }}
-        />
-        <aside
-          className={`absolute right-0 top-0 flex h-full w-full max-w-md flex-col border-l border-white/10 bg-ink text-on-ink shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-            drawerOpen ? "translate-x-0" : "translate-x-full"
-          }`}
-          role="dialog"
-          aria-modal="true"
-          aria-label={`${build.title} architecture`}
+          aria-hidden={!drawerOpen}
         >
-          <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-            <p className="font-[family-name:var(--font-archivo)] text-[11px] tracking-[0.14em] text-white/50">
-              {build.id} / LIVE ARCHITECTURE
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setDrawerOpen(false);
-                playLatch();
-              }}
-              className="grid h-8 w-8 place-items-center rounded-[4px] border border-white/20 text-sm hover:bg-white/10"
-              aria-label="Close"
-            >
-              ✕
-            </button>
-          </div>
-          <div
-            className={`flex-1 px-5 py-5 ${
-              drawerOpen ? "overflow-y-auto" : "overflow-hidden"
+          <button
+            type="button"
+            className={`absolute inset-0 bg-black/45 transition-opacity ${
+              drawerOpen ? "opacity-100" : "opacity-0"
             }`}
+            aria-label="Close architecture drawer"
+            onClick={() => {
+              setDrawerOpen(false);
+              playLatch();
+            }}
+          />
+          <aside
+            className={`absolute right-0 top-0 flex h-full w-full max-w-md flex-col border-l border-white/10 bg-ink text-on-ink shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              drawerOpen ? "translate-x-0" : "translate-x-full"
+            }`}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${build.title} architecture`}
           >
-            <div className="overflow-hidden rounded-[6px] border border-white/10">
-              <div className="h-[140px]">
-                <BuildArt index={buildIndex} />
-              </div>
+            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+              <p className="font-[family-name:var(--font-archivo)] text-[11px] tracking-[0.14em] text-white/50">
+                {build.id} / LIVE ARCHITECTURE
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setDrawerOpen(false);
+                  playLatch();
+                }}
+                className="grid h-8 w-8 place-items-center rounded-[4px] border border-white/20 text-sm hover:bg-white/10"
+                aria-label="Close"
+              >
+                ✕
+              </button>
             </div>
-            <h3 className="mt-5 font-[family-name:var(--font-archivo)] text-2xl font-semibold tracking-[-0.03em]">
-              {build.title}
-            </h3>
-            <p className="mt-2 text-sm text-white/55">{build.blurb}</p>
-            <p className="mt-5 font-[family-name:var(--font-archivo)] text-[10px] uppercase tracking-[0.16em] text-white/40">
-              Flow
-            </p>
-            <p className="mt-1 text-sm text-white/75">{build.flow}</p>
-            <p className="mt-6 font-[family-name:var(--font-archivo)] text-[10px] uppercase tracking-[0.16em] text-white/40">
-              Key decisions
-            </p>
-            <ul className="mt-3 space-y-3">
-              {build.decisions.map((d) => (
-                <li
-                  key={d}
-                  className="relative pl-4 text-sm leading-relaxed text-white/75 before:absolute before:left-0 before:top-[0.55em] before:h-1 before:w-1 before:bg-signal"
-                >
-                  {d}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="border-t border-white/10 p-5">
-            <a
-              href={build.previewHref}
-              onClick={() => setDrawerOpen(false)}
-              className="flex h-11 items-center justify-center rounded-[6px] bg-on-ink text-[13px] font-semibold text-ink transition-[box-shadow,opacity] hover:shadow-[0_0_0_2px_var(--signal)]"
+            <div
+              className={`flex-1 px-5 py-5 ${
+                drawerOpen ? "overflow-y-auto" : "overflow-hidden"
+              }`}
             >
-              Inspect full case study ↗
-            </a>
-          </div>
-        </aside>
-      </div>
+              <div className="overflow-hidden rounded-[6px] border border-white/10">
+                <div className="h-[140px]">
+                  <BuildArt index={buildIndex} />
+                </div>
+              </div>
+              <h3 className="mt-5 font-[family-name:var(--font-archivo)] text-2xl font-semibold tracking-[-0.03em]">
+                {build.title}
+              </h3>
+              <p className="mt-2 text-sm text-white/55">{build.blurb}</p>
+              <p className="mt-5 font-[family-name:var(--font-archivo)] text-[10px] uppercase tracking-[0.16em] text-white/40">
+                Flow
+              </p>
+              <p className="mt-1 text-sm text-white/75">{build.flow}</p>
+              <p className="mt-6 font-[family-name:var(--font-archivo)] text-[10px] uppercase tracking-[0.16em] text-white/40">
+                Key decisions
+              </p>
+              <ul className="mt-3 space-y-3">
+                {build.decisions.map((d) => (
+                  <li
+                    key={d}
+                    className="relative pl-4 text-sm leading-relaxed text-white/75 before:absolute before:left-0 before:top-[0.55em] before:h-1 before:w-1 before:bg-signal"
+                  >
+                    {d}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="border-t border-white/10 p-5">
+              <a
+                href={build.previewHref}
+                onClick={() => setDrawerOpen(false)}
+                className="flex h-11 items-center justify-center rounded-[6px] bg-on-ink text-[13px] font-semibold text-ink transition-[box-shadow,opacity] hover:shadow-[0_0_0_2px_var(--signal)]"
+              >
+                Inspect full case study ↗
+              </a>
+            </div>
+          </aside>
+        </div>,
+        document.body
+      )}
 
       {/* Bottom obsidian bar — always fully visible inside 100dvh */}
       <div

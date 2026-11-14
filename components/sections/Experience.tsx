@@ -3,6 +3,7 @@
 import { useEffect, useRef, type CSSProperties } from "react";
 import { experience } from "@/content/portfolio";
 import { FadeIn } from "@/components/motion/FadeIn";
+import { useArriveReplay } from "@/hooks/useArriveReplay";
 import { polish } from "@/lib/polish";
 
 export function Experience() {
@@ -12,6 +13,40 @@ export function Experience() {
   const crossedRef = useRef(false);
   const useRail = polish("experienceTickRail");
   const useHead = polish("experienceScrollHead");
+
+  useArriveReplay("#experience", () => {
+    if (!useRail) return;
+    const section = sectionRef.current;
+    const list = listRef.current;
+    if (!section || !list) return;
+    const jobs = [...list.querySelectorAll<HTMLElement>("[data-exp-job]")];
+    jobs.forEach((j) => j.classList.remove("is-tripped"));
+    crossedRef.current = false;
+    section.style.setProperty("--exp-progress", "0");
+    requestAnimationFrame(() => {
+      const vh = window.innerHeight;
+      const rect = section.getBoundingClientRect();
+      const raw =
+        (vh * 0.35 - rect.top) / Math.max(1, rect.height - vh * 0.2);
+      section.style.setProperty(
+        "--exp-progress",
+        Math.min(1, Math.max(0, raw)).toFixed(4)
+      );
+      jobs.forEach((job, i) => {
+        if (job.getBoundingClientRect().top < vh * 0.42) {
+          job.classList.add("is-tripped");
+        }
+        if (useHead && i === 1 && flashRef.current) {
+          const flash = flashRef.current;
+          flash.style.top = `${job.offsetTop}px`;
+          flash.classList.remove("is-firing");
+          void flash.offsetWidth;
+          flash.classList.add("is-firing");
+          crossedRef.current = true;
+        }
+      });
+    });
+  });
 
   useEffect(() => {
     if (!useRail) return;

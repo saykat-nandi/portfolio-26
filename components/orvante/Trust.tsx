@@ -11,6 +11,7 @@ import {
   usePrefersReducedMotion,
   useRecorderMode,
 } from "@/components/orvante/useU";
+import { useArriveReplay } from "@/hooks/useArriveReplay";
 import { polish } from "@/lib/polish";
 import { playTick } from "@/lib/relayClick";
 
@@ -212,6 +213,20 @@ export function OrvanteTrust() {
     setGlassLive(false);
     setGlassTilt({ x: 0, y: 0 });
   };
+
+  useArriveReplay("#stack", () => {
+    if (reduce) {
+      setActive(true);
+      setDocked(true);
+      return;
+    }
+    setDocked(false);
+    setActive(false);
+    requestAnimationFrame(() => {
+      setActive(true);
+      setDocked(true);
+    });
+  });
 
   useEffect(() => {
     const root = rootRef.current;

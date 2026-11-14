@@ -9,6 +9,7 @@ import {
   type RefObject,
 } from "react";
 import { lab } from "@/content/portfolio";
+import { useArriveReplay } from "@/hooks/useArriveReplay";
 import { useScrollProgress } from "@/hooks/useScrollProgress";
 import { polish } from "@/lib/polish";
 
@@ -308,11 +309,18 @@ export default function ScrollHardwareLab() {
   const [telemetry, setTelemetry] = useState("X: 000.0mm // STANDBY");
   const [spotlightUnlocked, setSpotlightUnlocked] = useState(false);
   const [schematicsAlive, setSchematicsAlive] = useState(false);
+  const [replayKey, setReplayKey] = useState(0);
   const plotter = polish("labPlotterStage");
   const useSticky = plotter && isDesktop;
 
   useScrollProgress(sectionRef, {
     mode: useSticky ? "sticky" : "pass-through",
+  });
+
+  useArriveReplay("#lab", () => {
+    setSpotlightUnlocked(true);
+    setSchematicsAlive(true);
+    setReplayKey((k) => k + 1);
   });
 
   useEffect(() => {
@@ -424,8 +432,26 @@ export default function ScrollHardwareLab() {
     cards.forEach((c) => io.observe(c));
     setSpotlightUnlocked(true);
     setSchematicsAlive(true);
+
+    if (replayKey > 0) {
+      cards.forEach((card) => {
+        const strokes = [
+          ...card.querySelectorAll<SVGGeometryElement>(".lab-stroke"),
+        ];
+        strokes.forEach((stroke, i) => {
+          const len =
+            Number(stroke.style.getPropertyValue("--lab-len")) || 240;
+          stroke.style.strokeDashoffset = `${len}`;
+          stroke.style.transition = `stroke-dashoffset 900ms ${i * 70}ms cubic-bezier(0.16, 1, 0.3, 1)`;
+          requestAnimationFrame(() => {
+            stroke.style.strokeDashoffset = "0";
+          });
+        });
+      });
+    }
+
     return () => io.disconnect();
-  }, [useSticky]);
+  }, [useSticky, replayKey]);
 
   const heading = (
     <>

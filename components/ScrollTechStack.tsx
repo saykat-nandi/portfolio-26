@@ -3,9 +3,11 @@
 import {
   useEffect,
   useRef,
+  useState,
   type CSSProperties,
 } from "react";
 import { techStack } from "@/content/portfolio";
+import { useArriveReplay } from "@/hooks/useArriveReplay";
 import { useScrollProgress } from "@/hooks/useScrollProgress";
 import { polish } from "@/lib/polish";
 import { playTick } from "@/lib/relayClick";
@@ -16,7 +18,10 @@ export default function ScrollTechStack() {
   const sectionRef = useRef<HTMLElement>(null);
   const tickerRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<HTMLDivElement>(null);
+  const [replayKey, setReplayKey] = useState(0);
   useScrollProgress(sectionRef, { mode: "pass-through" });
+
+  useArriveReplay("#toolkit", () => setReplayKey((k) => k + 1));
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -77,6 +82,13 @@ export default function ScrollTechStack() {
     ).matches;
     const din = polish("techDinRail");
 
+    cols.forEach((c) => {
+      c.classList.remove("is-snapped");
+      c.querySelectorAll<HTMLElement>(".tech-din-row").forEach((row) => {
+        row.style.transitionDelay = "0ms";
+      });
+    });
+
     if (prefersReduced) {
       cols.forEach((c) => {
         c.classList.add("is-snapped");
@@ -117,23 +129,48 @@ export default function ScrollTechStack() {
       );
 
       cols.forEach((c) => io.observe(c));
+      // Nav arrive: section is already in view — snap immediately
+      if (replayKey > 0) {
+        cols.forEach((el, i) => {
+          el.animate(
+            [
+              { opacity: 0, transform: "translateY(28px)" },
+              { opacity: 1, transform: "translateY(0)" },
+            ],
+            {
+              duration: 520,
+              delay: i * 60,
+              fill: "forwards",
+              easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+            }
+          );
+        });
+      }
       return () => io.disconnect();
+    }
+
+    const snapCol = (col: HTMLElement) => {
+      col.classList.add("is-snapped");
+      playTick();
+      const rows = [...col.querySelectorAll<HTMLElement>(".tech-din-row")];
+      rows.forEach((row, i) => {
+        row.style.transitionDelay = `${120 + i * 30}ms`;
+      });
+    };
+
+    if (replayKey > 0) {
+      cols.forEach((col, i) => {
+        window.setTimeout(() => snapCol(col), i * 70);
+      });
+      return;
     }
 
     const io = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (!entry.isIntersecting) return;
-          const col = entry.target as HTMLElement;
-          col.classList.add("is-snapped");
-          playTick();
-          const rows = [
-            ...col.querySelectorAll<HTMLElement>(".tech-din-row"),
-          ];
-          rows.forEach((row, i) => {
-            row.style.transitionDelay = `${120 + i * 30}ms`;
-          });
-          io.unobserve(col);
+          snapCol(entry.target as HTMLElement);
+          io.unobserve(entry.target);
         });
       },
       { threshold: 0.25 }
@@ -141,7 +178,7 @@ export default function ScrollTechStack() {
 
     cols.forEach((c) => io.observe(c));
     return () => io.disconnect();
-  }, []);
+  }, [replayKey]);
 
   const loop = [...TICKER, ...TICKER];
   const din = polish("techDinRail");

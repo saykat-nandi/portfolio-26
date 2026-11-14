@@ -17,12 +17,14 @@ const HERO_STAGGER_MS = 420;
 
 type BootRevealValue = {
   revealed: boolean;
+  bootComplete: boolean;
   /** Delay (ms) before hero entrance should start — synced to shutter mid-exit */
   entranceDelayMs: number;
 };
 
 const BootRevealContext = createContext<BootRevealValue>({
   revealed: false,
+  bootComplete: false,
   entranceDelayMs: 40,
 });
 
@@ -36,8 +38,8 @@ const PAGE_EASE = [0.22, 1, 0.36, 1] as const;
  * Runs the terminal boot shutter once, locks scroll until complete,
  * then crossfades into the page so hero entrances rise with the wipe.
  *
- * Avoid transform/filter on this wrapper — they create a containing block for
- * position:fixed descendants and can leave a floating OS scrollbar over the hero.
+ * Opacity-only page reveal — never transform/filter here. Those create a
+ * containing block for position:fixed descendants (drawer scrollbars, etc.).
  */
 export function BootGate({ children }: { children: ReactNode }) {
   const reduce = useReducedMotion();
@@ -75,9 +77,10 @@ export function BootGate({ children }: { children: ReactNode }) {
   const ctx = useMemo<BootRevealValue>(
     () => ({
       revealed,
+      bootComplete,
       entranceDelayMs: reduce ? 0 : revealed ? HERO_STAGGER_MS : 40,
     }),
-    [reduce, revealed]
+    [bootComplete, reduce, revealed]
   );
 
   return (
@@ -94,10 +97,10 @@ export function BootGate({ children }: { children: ReactNode }) {
           children
         ) : (
           <motion.div
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             transition={{
-              duration: 0.95,
+              duration: 0.85,
               ease: PAGE_EASE,
               delay: 0.04,
             }}

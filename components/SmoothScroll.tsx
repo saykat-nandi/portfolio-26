@@ -93,7 +93,8 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
         easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
         smoothWheel: true,
       }) as LenisRuntime;
-      registerLenis(lenis);
+      // Pass kick so programmatic scrollTo (nav) can wake the idle rAF loop
+      registerLenis(lenis, kick);
 
       lenis.on("scroll", kick);
       window.addEventListener("wheel", kick, { passive: true });
@@ -120,7 +121,7 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
         lenis.off("scroll", kick);
         lenis.destroy();
       }
-      registerLenis(null);
+      registerLenis(null, null);
     };
   }, []);
 
