@@ -1,3 +1,4 @@
+import { BootGate } from "@/components/BootGate";
 import Hero from "@/components/Hero";
 import HeroExitStage from "@/components/HeroExitStage";
 import ScrollManifesto from "@/components/ScrollManifesto";
@@ -12,7 +13,7 @@ import { Contact } from "@/components/sections/Contact";
 
 export default function Home() {
   return (
-    <>
+    <BootGate>
       <main className="relative overflow-x-clip bg-ink">
         {/*
           PERMANENT shutter pair — do not unwrap.
@@ -41,6 +42,6 @@ export default function Home() {
         <Contact />
       </main>
       <Footer />
-    </>
+    </BootGate>
   );
 }
