@@ -9,9 +9,12 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@imgly/background-removal-node": "^1.4.5",
+    "framer-motion": "^14.14.0",
     "next": "16.4.6",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "sharp": "^0.33.5"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "4.3.3",
@@ -22,5 +25,11 @@
     "eslint-config-next": "16.4.6",
     "tailwindcss": "4.3.3",
     "typescript": "^5"
+  },
+  "allowScripts": {
+    "onnxruntime-node@1.17.3": true,
+    "sharp@0.32.6": true,
+    "sharp@0.35.5": true,
+    "sharp@0.33.5": true
   }
 }
