@@ -948,7 +948,11 @@ export default function Hero() {
               ✕
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto px-5 py-5">
+          <div
+            className={`flex-1 px-5 py-5 ${
+              drawerOpen ? "overflow-y-auto" : "overflow-hidden"
+            }`}
+          >
             <div className="overflow-hidden rounded-[6px] border border-white/10">
               <div className="h-[140px]">
                 <BuildArt index={buildIndex} />

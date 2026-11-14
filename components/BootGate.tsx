@@ -35,6 +35,9 @@ const PAGE_EASE = [0.22, 1, 0.36, 1] as const;
 /**
  * Runs the terminal boot shutter once, locks scroll until complete,
  * then crossfades into the page so hero entrances rise with the wipe.
+ *
+ * Avoid transform/filter on this wrapper — they create a containing block for
+ * position:fixed descendants and can leave a floating OS scrollbar over the hero.
  */
 export function BootGate({ children }: { children: ReactNode }) {
   const reduce = useReducedMotion();
@@ -91,15 +94,14 @@ export function BootGate({ children }: { children: ReactNode }) {
           children
         ) : (
           <motion.div
-            initial={{ opacity: 0, scale: 1.024, filter: "blur(8px)" }}
-            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{
-              duration: 1.05,
+              duration: 0.95,
               ease: PAGE_EASE,
-              delay: 0.05,
+              delay: 0.04,
             }}
-            className="min-h-dvh will-change-[transform,opacity,filter]"
-            style={{ transformOrigin: "50% 18%" }}
+            className="min-h-dvh overflow-x-clip"
           >
             {children}
           </motion.div>

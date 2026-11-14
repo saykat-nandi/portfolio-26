@@ -237,23 +237,16 @@ export function BootLoader({
           exit={{
             y: "-108%",
             opacity: 0,
-            filter: "blur(12px)",
             transition: {
               y: { ease: EXIT_EASE, duration: exitMs / 1000 },
               opacity: {
                 ease: [0.4, 0, 0.2, 1],
-                duration: (exitMs / 1000) * 0.62,
-                delay: 0.12,
-              },
-              filter: {
                 duration: (exitMs / 1000) * 0.55,
-                delay: 0.08,
+                delay: 0.18,
               },
             },
           }}
-          className={`boot-loader fixed inset-0 z-[100] flex flex-col justify-end bg-ink p-6 font-mono text-xs uppercase tracking-widest text-on-ink/60 sm:p-10 sm:text-sm ${
-            isBooted ? "overflow-visible" : "overflow-hidden"
-          }`}
+          className="boot-loader fixed inset-0 z-[100] flex flex-col justify-end overflow-hidden bg-ink p-6 font-mono text-xs uppercase tracking-widest text-on-ink/60 sm:p-10 sm:text-sm"
         >
           {/* Ambient grid + scan sweep */}
           <motion.div
@@ -287,10 +280,16 @@ export function BootLoader({
             }
           />
 
-          {/* Soft trail under the shutter edge */}
+          {/* Soft leading edge on the shutter (kept inside overflow clip) */}
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-full h-24 bg-gradient-to-b from-ink via-ink/55 to-transparent"
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-16 bg-gradient-to-t from-transparent to-ink/0"
+            style={{
+              background:
+                "linear-gradient(to top, transparent 0%, rgba(17,17,17,0.35) 55%, var(--ink) 100%)",
+              mixBlendMode: "normal",
+              opacity: isBooted ? 1 : 0,
+            }}
           />
           <motion.div
             aria-hidden
