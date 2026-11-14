@@ -1,18 +1,43 @@
 "use client";
 
 import {
+  createContext,
   useCallback,
+  useContext,
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { BootLoader } from "@/components/BootLoader";
+
+const EXIT_MS = 1200;
+const HERO_STAGGER_MS = 420;
+
+type BootRevealValue = {
+  revealed: boolean;
+  /** Delay (ms) before hero entrance should start — synced to shutter mid-exit */
+  entranceDelayMs: number;
+};
+
+const BootRevealContext = createContext<BootRevealValue>({
+  revealed: false,
+  entranceDelayMs: 40,
+});
+
+export function useBootReveal() {
+  return useContext(BootRevealContext);
+}
+
+const PAGE_EASE = [0.22, 1, 0.36, 1] as const;
 
 /**
  * Runs the terminal boot shutter once, locks scroll until complete,
- * then reveals the page so hero entrances don't fire under the overlay.
+ * then crossfades into the page so hero entrances rise with the wipe.
  */
 export function BootGate({ children }: { children: ReactNode }) {
+  const reduce = useReducedMotion();
   const [revealed, setRevealed] = useState(false);
   const [bootComplete, setBootComplete] = useState(false);
 
@@ -28,22 +53,58 @@ export function BootGate({ children }: { children: ReactNode }) {
     if (bootComplete) {
       document.documentElement.style.overflow = "";
       document.body.style.overflow = "";
+      document.documentElement.removeAttribute("data-boot");
       return;
     }
     document.documentElement.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
+    document.documentElement.setAttribute(
+      "data-boot",
+      revealed ? "exiting" : "loading"
+    );
     return () => {
       document.documentElement.style.overflow = "";
       document.body.style.overflow = "";
+      document.documentElement.removeAttribute("data-boot");
     };
-  }, [bootComplete]);
+  }, [bootComplete, revealed]);
+
+  const ctx = useMemo<BootRevealValue>(
+    () => ({
+      revealed,
+      entranceDelayMs: reduce ? 0 : revealed ? HERO_STAGGER_MS : 40,
+    }),
+    [reduce, revealed]
+  );
 
   return (
-    <>
+    <BootRevealContext.Provider value={ctx}>
       {!bootComplete ? (
-        <BootLoader onReveal={onReveal} onComplete={onComplete} />
+        <BootLoader
+          onReveal={onReveal}
+          onComplete={onComplete}
+          exitMs={EXIT_MS}
+        />
       ) : null}
-      {revealed ? children : null}
-    </>
+      {revealed ? (
+        reduce ? (
+          children
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, scale: 1.024, filter: "blur(8px)" }}
+            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+            transition={{
+              duration: 1.05,
+              ease: PAGE_EASE,
+              delay: 0.05,
+            }}
+            className="min-h-dvh will-change-[transform,opacity,filter]"
+            style={{ transformOrigin: "50% 18%" }}
+          >
+            {children}
+          </motion.div>
+        )
+      ) : null}
+    </BootRevealContext.Provider>
   );
 }

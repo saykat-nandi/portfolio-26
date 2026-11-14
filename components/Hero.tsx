@@ -15,6 +15,7 @@ import HeroAtmosphere from "@/components/HeroAtmosphere";
 import Gyroscope3D from "@/components/Gyroscope3D";
 import { ContactDialogButton } from "@/components/ContactDialog";
 import { contact } from "@/content/portfolio";
+import { useBootReveal } from "@/components/BootGate";
 import { polish } from "@/lib/polish";
 import { playLatch, playTick } from "@/lib/relayClick";
 import { emitShippedCycle } from "@/lib/shippedCycle";
@@ -231,6 +232,7 @@ function magneticReset(el: HTMLElement | null) {
 
 export default function Hero() {
   const reduce = usePrefersReducedMotion();
+  const { entranceDelayMs } = useBootReveal();
   const rootRef = useRef<HTMLElement>(null);
   useScrollProgress(rootRef, { mode: "pass-through" });
 
@@ -326,52 +328,53 @@ export default function Hero() {
       portraitRef.current.style.transform = "translateY(32px)";
     }
 
+    // Rise with the boot shutter mid-exit so the handoff reads as one motion
     const t = window.setTimeout(() => {
       lines.forEach((el, i) => {
         el.animate(
-          [{ transform: "translateY(100%)" }, { transform: "translateY(0)" }],
+          [{ transform: "translateY(110%)" }, { transform: "translateY(0)" }],
           {
-            duration: 900,
-            delay: 110 * i,
+            duration: 980,
+            delay: 90 * i,
             fill: "forwards",
-            easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+            easing: "cubic-bezier(0.22, 1, 0.36, 1)",
           }
         );
       });
 
       portraitRef.current?.animate(
         [
-          { opacity: 0, transform: "translateY(32px)" },
-          { opacity: 1, transform: "translateY(0)" },
+          { opacity: 0, transform: "translateY(40px) scale(1.03)" },
+          { opacity: 1, transform: "translateY(0) scale(1)" },
         ],
         {
-          duration: 1100,
-          delay: 80,
+          duration: 1180,
+          delay: 60,
           fill: "forwards",
-          easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+          easing: "cubic-bezier(0.22, 1, 0.36, 1)",
         }
       );
 
       rises.forEach((el, i) => {
         el.animate(
           [
-            { opacity: 0, transform: "translateY(16px)" },
+            { opacity: 0, transform: "translateY(22px)" },
             { opacity: 1, transform: "translateY(0)" },
           ],
           {
-            duration: 700,
-            delay: Number(el.dataset.delay || 0) + i * 55,
+            duration: 780,
+            delay: Number(el.dataset.delay || 0) + i * 48,
             fill: "forwards",
-            easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+            easing: "cubic-bezier(0.22, 1, 0.36, 1)",
           }
         );
       });
 
       setReady(true);
-    }, 40);
+    }, entranceDelayMs);
 
     return () => window.clearTimeout(t);
-  }, [reduce]);
+  }, [entranceDelayMs, reduce]);
 
   useEffect(() => {
     emitShippedCycle();

@@ -146,12 +146,17 @@ function ArchBar({ active }: { active: boolean }) {
   );
 }
 
+const EXIT_EASE = [0.22, 1, 0.36, 1] as const;
+
 export function BootLoader({
   onComplete,
   onReveal,
+  exitMs = 1200,
 }: {
   onComplete: () => void;
   onReveal?: () => void;
+  /** Shutter lift duration — keep in sync with BootGate */
+  exitMs?: number;
 }) {
   const [step, setStep] = useState(0);
   const [isBooted, setIsBooted] = useState(false);
@@ -191,11 +196,14 @@ export function BootLoader({
       if (index >= BOOT_STEPS.length) {
         setIsBooted(true);
         setPct(100);
+        // Mount hero under the shutter first, then lift — continuous handoff
         later(() => {
           onReveal?.();
-          setIsExiting(true);
-          later(onComplete, 900);
-        }, 700);
+          later(() => {
+            setIsExiting(true);
+            later(onComplete, exitMs + 80);
+          }, 90);
+        }, 640);
         return;
       }
 
@@ -218,7 +226,7 @@ export function BootLoader({
       timers.forEach((id) => window.clearTimeout(id));
       window.clearInterval(clock);
     };
-  }, [onComplete, onReveal]);
+  }, [exitMs, onComplete, onReveal]);
 
   return (
     <AnimatePresence>
@@ -227,15 +235,32 @@ export function BootLoader({
           key="boot-shutter"
           initial={{ opacity: 1 }}
           exit={{
-            y: "-105%",
-            transition: { ease: SNAP, duration: 0.9 },
+            y: "-108%",
+            opacity: 0,
+            filter: "blur(12px)",
+            transition: {
+              y: { ease: EXIT_EASE, duration: exitMs / 1000 },
+              opacity: {
+                ease: [0.4, 0, 0.2, 1],
+                duration: (exitMs / 1000) * 0.62,
+                delay: 0.12,
+              },
+              filter: {
+                duration: (exitMs / 1000) * 0.55,
+                delay: 0.08,
+              },
+            },
           }}
-          className="boot-loader fixed inset-0 z-[100] flex flex-col justify-end overflow-hidden bg-ink p-6 font-mono text-xs uppercase tracking-widest text-on-ink/60 sm:p-10 sm:text-sm"
+          className={`boot-loader fixed inset-0 z-[100] flex flex-col justify-end bg-ink p-6 font-mono text-xs uppercase tracking-widest text-on-ink/60 sm:p-10 sm:text-sm ${
+            isBooted ? "overflow-visible" : "overflow-hidden"
+          }`}
         >
           {/* Ambient grid + scan sweep */}
-          <div
+          <motion.div
             aria-hidden
             className="pointer-events-none absolute inset-0 opacity-[0.07]"
+            animate={isBooted ? { opacity: 0 } : { opacity: 0.07 }}
+            transition={{ duration: 0.45 }}
             style={{
               backgroundImage:
                 "linear-gradient(rgba(234,232,227,0.35) 1px, transparent 1px), linear-gradient(90deg, rgba(234,232,227,0.35) 1px, transparent 1px)",
@@ -246,14 +271,48 @@ export function BootLoader({
             aria-hidden
             className="pointer-events-none absolute inset-x-0 h-24 bg-gradient-to-b from-transparent via-signal/10 to-transparent"
             initial={{ top: "-20%" }}
-            animate={{ top: ["-20%", "120%"] }}
-            transition={{
-              duration: 2.8,
-              repeat: Infinity,
-              ease: "linear",
-            }}
+            animate={
+              isBooted
+                ? { top: "120%", opacity: 0 }
+                : { top: ["-20%", "120%"], opacity: 1 }
+            }
+            transition={
+              isBooted
+                ? { duration: 0.4 }
+                : {
+                    duration: 2.8,
+                    repeat: Infinity,
+                    ease: "linear",
+                  }
+            }
           />
 
+          {/* Soft trail under the shutter edge */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-full h-24 bg-gradient-to-b from-ink via-ink/55 to-transparent"
+          />
+          <motion.div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-px origin-center bg-gradient-to-r from-transparent via-signal/70 to-transparent"
+            animate={
+              isBooted
+                ? { opacity: [0.35, 1, 0], scaleX: [0.55, 1.05, 1.2] }
+                : { opacity: 0.35, scaleX: 1 }
+            }
+            transition={{ duration: 0.75, ease: EXIT_EASE }}
+          />
+
+          {/* Chrome dissolves before shutter lift */}
+          <motion.div
+            className="absolute inset-0 z-10 flex flex-col justify-end p-6 sm:p-10"
+            animate={
+              isBooted
+                ? { opacity: 0, y: -28, filter: "blur(8px)" }
+                : { opacity: 1, y: 0, filter: "blur(0px)" }
+            }
+            transition={{ duration: 0.55, ease: EXIT_EASE }}
+          >
           {/* Corner brackets */}
           <div
             aria-hidden
@@ -450,18 +509,25 @@ export function BootLoader({
               </motion.p>
             )}
           </div>
+          </motion.div>
 
           {/* Bottom rail — signal strip that leads the shutter */}
           <motion.div
             className="absolute bottom-0 left-0 h-1 origin-left bg-signal"
             initial={{ scaleX: 0 }}
-            animate={{ scaleX: progress }}
+            animate={{
+              scaleX: isBooted ? 1 : progress,
+              opacity: isBooted ? 0 : 1,
+            }}
             transition={{ ease: SNAP, duration: 0.3 }}
           />
           <motion.div
             aria-hidden
             className="absolute bottom-0 left-0 h-[2px] w-16 bg-white/80"
-            animate={{ left: [`0%`, `${Math.max(4, progress * 100)}%`] }}
+            animate={{
+              left: `${Math.max(4, progress * 100)}%`,
+              opacity: isBooted ? 0 : 1,
+            }}
             transition={{ ease: SNAP, duration: 0.3 }}
           />
         </motion.div>
