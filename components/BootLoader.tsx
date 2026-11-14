@@ -148,6 +148,114 @@ function ArchBar({ active }: { active: boolean }) {
 
 const EXIT_EASE = [0.22, 1, 0.36, 1] as const;
 
+function ThinkingMark({ done }: { done: boolean }) {
+  const label = done ? "READY" : "THINKING";
+
+  return (
+    <div className="absolute left-1/2 top-[15%] flex -translate-x-1/2 flex-col items-center sm:top-[18%]">
+      {/* Orbiting signal nodes */}
+      <div className="relative mb-5 h-14 w-14 sm:h-16 sm:w-16">
+        <motion.div
+          className="absolute inset-0 rounded-full border border-on-ink/10"
+          animate={done ? { opacity: 0.35 } : { opacity: [0.15, 0.45, 0.15] }}
+          transition={{ duration: 2.2, repeat: done ? 0 : Infinity, ease: "easeInOut" }}
+        />
+        <motion.div
+          className="absolute inset-[18%] rounded-full border border-dashed border-signal/25"
+          animate={done ? { rotate: 0 } : { rotate: -360 }}
+          transition={{ duration: 14, repeat: Infinity, ease: "linear" }}
+        />
+        <motion.div
+          className="absolute inset-0"
+          animate={done ? { rotate: 0 } : { rotate: 360 }}
+          transition={{ duration: 3.6, repeat: done ? 0 : Infinity, ease: "linear" }}
+        >
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              className="absolute inset-0"
+              style={{ transform: `rotate(${i * 120}deg)` }}
+            >
+              <span className="absolute left-1/2 top-0 h-1.5 w-1.5 -translate-x-1/2 bg-signal shadow-[0_0_10px_var(--signal)]" />
+            </span>
+          ))}
+        </motion.div>
+        <motion.span
+          className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 bg-signal"
+          animate={
+            done
+              ? { scale: 1, opacity: 1 }
+              : { scale: [0.7, 1.15, 0.7], opacity: [0.55, 1, 0.55] }
+          }
+          transition={{ duration: 1.2, repeat: done ? 0 : Infinity, ease: "easeInOut" }}
+        />
+      </div>
+
+      <div className="relative overflow-hidden pb-1">
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={label}
+            initial={{ y: 18, opacity: 0, filter: "blur(6px)" }}
+            animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
+            exit={{ y: -14, opacity: 0, filter: "blur(4px)" }}
+            transition={{ duration: 0.4, ease: SNAP }}
+            className="flex items-baseline font-mono text-sm tracking-[0.42em] text-signal sm:text-base"
+            aria-live="polite"
+          >
+            {label.split("").map((ch, i) => (
+              <motion.span
+                key={`${label}-${i}`}
+                animate={
+                  done
+                    ? { opacity: 1 }
+                    : { opacity: [0.28, 1, 0.28] }
+                }
+                transition={{
+                  duration: 1.35,
+                  repeat: done ? 0 : Infinity,
+                  delay: i * 0.08,
+                  ease: "easeInOut",
+                }}
+              >
+                {ch}
+              </motion.span>
+            ))}
+            {!done ? (
+              <span className="ml-1 inline-flex w-[1.6em]">
+                {[0, 1, 2].map((i) => (
+                  <motion.span
+                    key={i}
+                    className="inline-block"
+                    animate={{ opacity: [0.15, 1, 0.15] }}
+                    transition={{
+                      duration: 0.9,
+                      repeat: Infinity,
+                      delay: 0.2 + i * 0.2,
+                      ease: "easeInOut",
+                    }}
+                  >
+                    .
+                  </motion.span>
+                ))}
+              </span>
+            ) : null}
+          </motion.p>
+        </AnimatePresence>
+      </div>
+
+      <motion.div
+        className="mt-3 h-px w-24 origin-center bg-gradient-to-r from-transparent via-signal to-transparent sm:w-28"
+        animate={
+          done
+            ? { scaleX: 0.4, opacity: 0 }
+            : { scaleX: [0.35, 1, 0.35], opacity: [0.35, 1, 0.35] }
+        }
+        transition={{ duration: 1.55, repeat: done ? 0 : Infinity, ease: "easeInOut" }}
+      />
+    </div>
+  );
+}
+
 export function BootLoader({
   onComplete,
   onReveal,
@@ -161,7 +269,6 @@ export function BootLoader({
   const [step, setStep] = useState(0);
   const [isBooted, setIsBooted] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
-  const [pct, setPct] = useState(0);
   const [ms, setMs] = useState(0);
 
   const progress = useMemo(
@@ -195,7 +302,6 @@ export function BootLoader({
     const advance = (index: number) => {
       if (index >= BOOT_STEPS.length) {
         setIsBooted(true);
-        setPct(100);
         // Mount hero under the shutter first, then lift — continuous handoff
         later(() => {
           onReveal?.();
@@ -208,7 +314,6 @@ export function BootLoader({
       }
 
       setStep(index + 1);
-      setPct(Math.round(((index + 1) / BOOT_STEPS.length) * 100));
 
       const isFinal = index === BOOT_STEPS.length - 1;
       const hold = isFinal
@@ -361,45 +466,7 @@ export function BootLoader({
             </motion.div>
           </div>
 
-          {/* Ring progress */}
-          <div className="absolute left-1/2 top-[18%] hidden -translate-x-1/2 sm:block">
-            <svg width="120" height="120" viewBox="0 0 120 120" className="-rotate-90">
-              <circle
-                cx="60"
-                cy="60"
-                r="52"
-                fill="none"
-                stroke="rgba(244,244,244,0.08)"
-                strokeWidth="2"
-              />
-              <motion.circle
-                cx="60"
-                cy="60"
-                r="52"
-                fill="none"
-                stroke="var(--signal)"
-                strokeWidth="2"
-                strokeLinecap="square"
-                strokeDasharray={2 * Math.PI * 52}
-                initial={{ strokeDashoffset: 2 * Math.PI * 52 }}
-                animate={{
-                  strokeDashoffset: 2 * Math.PI * 52 * (1 - progress),
-                }}
-                transition={{ ease: SNAP, duration: 0.35 }}
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center font-mono text-[11px] tracking-[0.14em] text-on-ink/50">
-              <motion.span
-                key={pct}
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-lg tabular-nums text-signal"
-              >
-                {pct}%
-              </motion.span>
-              <span>LOAD</span>
-            </div>
-          </div>
+          <ThinkingMark done={isBooted} />
 
           {/* Log stream */}
           <div className="relative z-10 flex max-w-3xl flex-col gap-2.5 pb-2">
